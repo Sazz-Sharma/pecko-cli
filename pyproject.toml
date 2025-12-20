@@ -1,0 +1,22 @@
+[project]
+name = "pecko"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { email = "sazz.sharma42@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "langchain>=1.2.0",
+    "langgraph>=1.0.5",
+    "rich>=14.2.0",
+    "typer>=0.20.1",
+]
+
+[project.scripts]
+pecko = "pecko:main"
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
