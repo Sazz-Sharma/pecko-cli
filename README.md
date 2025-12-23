@@ -48,3 +48,34 @@ Check status:
 ```bash
 pecko status
 ```
+
+## Configuration
+
+Pecko supports both **global** (user-level) and **local** (project-level) configurations. Local settings override global ones.
+
+### Managing Profiles
+
+Pecko uses **LLM Profiles** to manage different providers and models (e.g., OpenAI, Anthropic, Ollama).
+
+**Interactive Configuration:**
+```bash
+# Configure global defaults (saved to ~/.pecko/config.json)
+pecko config --global
+
+# Configure local project settings (saved to .pecko/config.json)
+pecko config --local
+```
+
+**List Profiles:**
+```bash
+pecko config --list
+# or for global only
+pecko config --global --list
+```
+
+**Switch Active Profile:**
+```bash
+pecko config --set-active <profile_name>
+# Example:
+pecko config --local --set-active ollama-local
+```
