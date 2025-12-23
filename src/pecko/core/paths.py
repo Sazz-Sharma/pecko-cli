@@ -7,6 +7,11 @@ PECKO_DIRNAME = ".pecko"
 CONFIG_FILENAME = "config.json"
 
 
+def get_global_config_path() -> Path:
+    """Return the path to the global configuration file."""
+    return Path.home() / PECKO_DIRNAME / CONFIG_FILENAME
+
+
 def find_repo_root(start: Path) -> Path | None:
 
     cur = start.resolve()
