@@ -135,7 +135,6 @@ def config(
             console.print(f"[green]Active profile set to '{set_active}' in {title}[/green]")
         return
 
-    # If no flags, show effective config (merged)
     if not global_config and not local_config:
         root = find_repo_root(Path.cwd())
         local_cfg_path = config_path(root) if root else None
