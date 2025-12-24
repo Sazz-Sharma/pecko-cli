@@ -1,6 +1,6 @@
 # Pecko
 
-**Pecko** is going to be a context-aware, CLI-based, autonomous, general-purpose AI agent designed to help you manage and interact with your local development environment intelligently.
+**Pecko** is a context-aware, CLI-based, autonomous, general-purpose AI agent designed to help you manage and interact with your local environment intelligently.
 
 <p align="center">
   <img src=".github/images/pecko_logo_.png" alt="Pecko Logo" width="100%">
@@ -9,7 +9,7 @@
 ## Features
 
 - **Context-Aware**: Will understand your project structure and local files.
-- **Autonomous**: Will perform tasks and make decisions based on your codebase.
+- **Autonomous**: Will perform tasks and make decisions based on your environment.
 - **CLI-First**: Built for the terminal, integrating seamlessly into your workflow.
 
 ## Setup
