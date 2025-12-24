@@ -53,6 +53,12 @@ Check status:
 pecko status
 ```
 
+Run the agent:
+Execute a task using the active profile.
+```bash
+pecko run "Create a file named hello.py that prints 'Hello World'"
+```
+
 ## Configuration
 
 Pecko supports both **global** (user-level) and **local** (project-level) configurations. Local settings override global ones.
