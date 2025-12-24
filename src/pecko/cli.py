@@ -9,6 +9,8 @@ from rich.prompt import Prompt
 
 from pecko.core.paths import find_repo_root, pecko_dir, PECKO_DIRNAME, config_path, get_global_config_path
 from pecko.core.config import PeckoConfig, write_config, read_config, load_config, LLMProfile
+from pecko.workflow.graph import create_graph
+from langchain_core.messages import HumanMessage
 
 
 app = typer.Typer(help="pecko — local repo CLI")
@@ -108,13 +110,12 @@ def config(
             target_path = get_global_config_path()
             title = "Global Configuration (Default)"
 
-    # Load config for viewing/editing
     if target_path and target_path.exists():
         current_cfg = read_config(target_path)
     else:
         current_cfg = PeckoConfig()
 
-    # Handle --list
+    # --list
     if list_profiles:
         console.print(f"[bold]{title}[/bold]")
         for name, profile in current_cfg.profiles.items():
@@ -124,7 +125,7 @@ def config(
             console.print(f"[{style}]{prefix}{name}[/{style}] - {profile.provider}/{profile.model}")
         return
 
-    # Handle --set-active
+    # --set-active
     if set_active:
         if set_active not in current_cfg.profiles:
             console.print(f"[red]Error: Profile '{set_active}' not found.[/red]")
@@ -175,6 +176,46 @@ def config(
         write_config(target_path, current_cfg)
         console.print(f"[green]Configuration saved to {target_path}[/green]")
         console.print(f"Active Profile: [bold]{profile_name}[/bold]")
+
+
+@app.command()
+def run(
+    prompt: str = typer.Argument(..., help="The instruction for the agent"),
+) -> None:
+    """
+    Run the Pecko agent with a prompt.
+    """
+  
+    root = find_repo_root(Path.cwd())
+    if not root:
+        console.print("[red]Error: Not inside a pecko workspace. Run 'pecko init' first.[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"[bold blue]Pecko Agent Running...[/bold blue]")
+    console.print(f"Task: {prompt}")
+
+    try:
+        graph = create_graph()
+        
+       
+        inputs = {"messages": [HumanMessage(content=prompt)]}
+        
+        
+        for chunk in graph.stream(inputs, stream_mode="values"):
+            
+            messages = chunk.get("messages", [])
+            
+            if messages:
+                last_msg = messages[-1]
+                
+                if last_msg.type == "ai":
+                    console.print(Panel(last_msg.content, title="Agent", border_style="blue"))
+                elif last_msg.type == "tool":
+                    console.print(f"[dim]Tool Output: {last_msg.name}[/dim]")
+
+    except Exception as e:
+        console.print(f"[red]Agent Error: {e}[/red]")
+        raise typer.Exit(1)
 
 
 def main():
