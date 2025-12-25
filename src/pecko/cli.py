@@ -78,6 +78,7 @@ def config(
     local_config: bool = typer.Option(False, "--local", help="Configure local settings"),
     list_profiles: bool = typer.Option(False, "--list", help="List all available profiles"),
     set_active: str = typer.Option(None, "--set-active", help="Set the active profile"),
+    copy_global: bool = typer.Option(False, "--copy-global", help="Copy global configuration to local"),
 ) -> None:
     """
     Configure pecko settings.
@@ -86,7 +87,35 @@ def config(
         console.print("[red]Error: Cannot specify both --global and --local[/red]")
         raise typer.Exit(1)
 
-    # Determine target path and title
+   
+    if copy_global:
+        root = find_repo_root(Path.cwd())
+        if not root:
+            console.print("[red]Error: Not inside a pecko workspace. Run 'pecko init' first.[/red]")
+            raise typer.Exit(1)
+
+        global_path = get_global_config_path()
+        if not global_path.exists():
+            console.print("[red]Error: No global configuration found.[/red]")
+            raise typer.Exit(1)
+
+        local_path = config_path(root)
+        global_cfg = read_config(global_path)
+
+        if local_path.exists():
+            local_cfg = read_config(local_path)
+        else:
+            local_cfg = PeckoConfig()
+
+      
+        local_cfg.profiles.update(global_cfg.profiles)
+        local_cfg.active_profile = global_cfg.active_profile
+
+        write_config(local_path, local_cfg)
+        console.print(f"[green]Successfully copied global configuration to local: {local_path}[/green]")
+        return
+
+
     target_path: Path | None = None
     title = "Effective Configuration"
     
