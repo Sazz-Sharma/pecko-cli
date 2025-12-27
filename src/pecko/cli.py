@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -10,7 +11,7 @@ from rich.prompt import Prompt
 from pecko.core.paths import find_repo_root, pecko_dir, PECKO_DIRNAME, config_path, get_global_config_path
 from pecko.core.config import PeckoConfig, write_config, read_config, load_config, LLMProfile
 from pecko.workflow.graph import create_graph
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, messages_to_dict, messages_from_dict
 
 
 app = typer.Typer(help="pecko — local repo CLI")
@@ -212,7 +213,7 @@ def run(
     prompt: str = typer.Argument(..., help="The instruction for the agent"),
 ) -> None:
     """
-    Run the Pecko agent with a prompt.
+    Run the Pecko agent.
     """
   
     root = find_repo_root(Path.cwd())
@@ -220,27 +221,47 @@ def run(
         console.print("[red]Error: Not inside a pecko workspace. Run 'pecko init' first.[/red]")
         raise typer.Exit(1)
 
+    # Load state
+    state_path = pecko_dir(root) / "state.json"
+    messages = []
+    if state_path.exists():
+        try:
+            data = json.loads(state_path.read_text(encoding="utf-8"))
+            messages = messages_from_dict(data)
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not load state: {e}[/yellow]")
+
     console.print(f"[bold blue]Pecko Agent Running...[/bold blue]")
     console.print(f"Task: {prompt}")
 
     try:
         graph = create_graph()
         
-       
-        inputs = {"messages": [HumanMessage(content=prompt)]}
+        messages.append(HumanMessage(content=prompt))
         
+        inputs = {"messages": messages}
+        print_idx = len(messages)
+        final_state = None
         
         for chunk in graph.stream(inputs, stream_mode="values"):
+            chunk_messages = chunk.get("messages", [])
             
-            messages = chunk.get("messages", [])
+            for i in range(print_idx, len(chunk_messages)):
+                msg = chunk_messages[i]
+                if msg.type == "ai":
+                    console.print(Panel(msg.content, title="Agent", border_style="blue"))
+                elif msg.type == "tool":
+                    content = str(msg.content)
+                    display_content = content[:200] + "..." if len(content) > 200 else content
+                    console.print(f"[dim]Tool Output ({msg.name}): {display_content}[/dim]")
             
-            if messages:
-                last_msg = messages[-1]
-                
-                if last_msg.type == "ai":
-                    console.print(Panel(last_msg.content, title="Agent", border_style="blue"))
-                elif last_msg.type == "tool":
-                    console.print(f"[dim]Tool Output: {last_msg.name}[/dim]")
+            print_idx = len(chunk_messages)
+            final_state = chunk
+
+        if final_state:
+            # Save state
+            new_messages = final_state["messages"]
+            state_path.write_text(json.dumps(messages_to_dict(new_messages), indent=2), encoding="utf-8")
 
     except Exception as e:
         console.print(f"[red]Agent Error: {e}[/red]")
