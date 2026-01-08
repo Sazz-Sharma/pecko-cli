@@ -232,7 +232,7 @@ def run(
             console.print(f"[yellow]Warning: Could not load state: {e}[/yellow]")
 
     console.print(f"[bold blue]Pecko Agent Running...[/bold blue]")
-    console.print(f"Task: {prompt}")
+    console.print(f"Task: {prompt}\n")
 
     try:
         graph = create_graph()
@@ -242,21 +242,74 @@ def run(
         inputs = {"messages": messages}
         print_idx = len(messages)
         final_state = None
+        current_agent = None
         
-        for chunk in graph.stream(inputs, stream_mode="values"):
-            chunk_messages = chunk.get("messages", [])
+        # Agent styling config
+        agent_styles = {
+            "planner": {"color": "cyan"},
+            "worker": {"color": "green"},
+            "reviewer": {"color": "magenta"},
+        }
+        
+        for chunk in graph.stream(inputs, stream_mode="updates"):
+            for node_name, node_output in chunk.items():
+                # Skip tool nodes for agent tracking
+                if node_name.endswith("_tools"):
+                    continue
+                
+                # Track which agent we're in
+                if node_name in agent_styles:
+                    current_agent = node_name
+                
+                chunk_messages = node_output.get("messages", [])
+                
+                for msg in chunk_messages:
+                    agent_info = agent_styles.get(current_agent, {"color": "blue"})
+                    agent_title = current_agent.title() if current_agent else "Agent"
+                    
+                    if msg.type == "ai":
+                        # Check for tool calls
+                        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                            for tool_call in msg.tool_calls:
+                                tool_name = tool_call.get("name", "unknown")
+                                tool_args = tool_call.get("args", {})
+                                
+                                # Format tool arguments nicely
+                                args_display = json.dumps(tool_args, indent=2) if tool_args else "{}"
+                                if len(args_display) > 300:
+                                    args_display = args_display[:300] + "..."
+                                
+                                console.print(
+                                    Panel(
+                                        f"[bold]Tool:[/bold] {tool_name}\n[dim]Args:[/dim]\n{args_display}",
+                                        title=f"{agent_title} -> Tool Call",
+                                        border_style=agent_info["color"],
+                                    )
+                                )
+                        
+                        # Print agent response content if any
+                        if msg.content:
+                            console.print(
+                                Panel(
+                                    msg.content,
+                                    title=agent_title,
+                                    border_style=agent_info["color"],
+                                )
+                            )
+                    
+                    elif msg.type == "tool":
+                        content = str(msg.content)
+                        display_content = content[:500] + "..." if len(content) > 500 else content
+                        console.print(
+                            f"[dim]  ↳ Tool Result ({msg.name}):[/dim]\n"
+                            f"[dim]{display_content}[/dim]\n"
+                        )
             
-            for i in range(print_idx, len(chunk_messages)):
-                msg = chunk_messages[i]
-                if msg.type == "ai":
-                    console.print(Panel(msg.content, title="Agent", border_style="blue"))
-                elif msg.type == "tool":
-                    content = str(msg.content)
-                    display_content = content[:200] + "..." if len(content) > 200 else content
-                    console.print(f"[dim]Tool Output ({msg.name}): {display_content}[/dim]")
-            
-            print_idx = len(chunk_messages)
-            final_state = chunk
+            # Update final state from the chunk
+            if chunk:
+                for node_output in chunk.values():
+                    if "messages" in node_output:
+                        final_state = {"messages": messages + node_output["messages"]}
 
         if final_state:
             # Save state
